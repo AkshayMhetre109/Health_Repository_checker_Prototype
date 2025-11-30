@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Symptom Checker</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function HealthSymptomChecker() {
+          const [screen, setScreen] = useState('home');
+          const [selectedRegion, setSelectedRegion] = useState('');
+          const [selectedSymptoms, setSelectedSymptoms] = useState([]);
+          const [answers, setAnswers] = useState({});
+          const [currentQuestion, setCurrentQuestion] = useState(0);
+          const [bodyView, setBodyView] = useState('front');
+          const [assessmentHistory] = useState([
+            { id: 1, date: 'October 10, 2025', region: 'Chest', symptoms: 'Tightness or pressure', recommendation: 'doctor', time: '2:30 PM' },
+            { id: 2, date: 'October 8, 2025', region: 'Head', symptoms: 'Headache or pain', recommendation: 'wait', time: '9:15 AM' },
+            { id: 3, date: 'October 5, 2025', region: 'Abdomen', symptoms: 'Stomach pain', recommendation: 'wait', time: '6:45 PM' }
+          ]);
+          const [medications] = useState([
+            { id: 1, name: 'Lisinopril 10mg', frequency: 'Once daily', time: 'Morning' },
+            { id: 2, name: 'Metformin 500mg', frequency: 'Twice daily', time: 'With meals' },
+            { id: 3, name: 'Aspirin 81mg', frequency: 'Once daily', time: 'Morning' },
+            { id: 4, name: 'Atorvastatin 20mg', frequency: 'Once daily', time: 'Evening' }
+          ]);
+          const [calling, setCalling] = useState(false);
+          const [callDuration, setCallDuration] = useState(0);
+
+          const bodyRegions = {
+            front: [
+              { id: 'head', name: 'Head' }, 
+              { id: 'chest', name: 'Chest' }, 
+              { id: 'abdomen', name: 'Abdomen' },
+              { id: 'leftArm', name: 'Left Arm' }, 
+              { id: 'rightArm', name: 'Right Arm' },
+              { id: 'leftLeg', name: 'Left Leg' }, 
+              { id: 'rightLeg', name: 'Right Leg' }
+            ],
+            back: [
+              { id: 'head', name: 'Back of Head' }, 
+              { id: 'upperBack', name: 'Upper Back' },
+              { id: 'lowerBack', name: 'Lower Back' }, 
+              { id: 'leftArm', name: 'Left Arm' }, 
+              { id: 'rightArm', name: 'Right Arm' }
+            ]
+          };
+
+          const symptoms = {
+            chest: [
+              { id: 'sharp', text: 'Sharp, stabbing pain', icon: '⚡' },
+              { id: 'pressure', text: 'Tightness or pressure', icon: '💪' },
+              { id: 'breathing', text: 'Difficulty breathing', icon: '😮' },
+              { id: 'heartbeat', text: 'Rapid or irregular heartbeat', icon: '💓' }
+            ],
+            head: [
+              { id: 'headache', text: 'Headache or pain', icon: '🤕' },
+              { id: 'dizzy', text: 'Dizziness or lightheaded', icon: '😵' },
+              { id: 'vision', text: 'Vision problems', icon: '👁️' },
+              { id: 'confusion', text: 'Confusion or memory issues', icon: '🤔' }
+            ],
+            abdomen: [
+              { id: 'pain', text: 'Stomach pain or cramping', icon: '🤢' },
+              { id: 'nausea', text: 'Nausea or vomiting', icon: '🤮' },
+              { id: 'bloating', text: 'Bloating or gas', icon: '💨' },
+              { id: 'changes', text: 'Changes in bowel habits', icon: '🚽' }
+            ],
+            default: [
+              { id: 'pain', text: 'Pain or discomfort', icon: '😣' },
+              { id: 'swelling', text: 'Swelling', icon: '🔴' },
+              { id: 'weakness', text: 'Weakness or numbness', icon: '💤' },
+              { id: 'stiffness', text: 'Stiffness or limited movement', icon: '🦴' }
+            ]
+          };
+
+          // Medication recommendations based on symptoms and body region
+          const medicationDatabase = {
+            head: {
+              headache: [
+                { name: 'Acetaminophen (Tylenol)', dosage: '500mg every 4-6 hours', notes: 'Good for general headaches', maxDaily: 'Max 3000mg/day' },
+                { name: 'Ibuprofen (Advil)', dosage: '200-400mg every 4-6 hours', notes: 'Reduces inflammation', maxDaily: 'Max 1200mg/day' }
+              ],
+              dizzy: [
+                { name: 'Rest and hydration', dosage: 'Drink water regularly', notes: 'Avoid sudden movements', maxDaily: 'Stay hydrated' },
+                { name: 'Meclizine', dosage: '25mg once daily', notes: 'For vertigo symptoms', maxDaily: 'Consult pharmacist' }
+              ]
+            },
+            chest: {
+              sharp: [
+                { name: 'Rest', dosage: 'Avoid strenuous activity', notes: 'Monitor symptoms closely', maxDaily: 'See doctor if persists' }
+              ],
+              breathing: [
+                { name: 'Sit upright', dosage: 'Use pillows for support', notes: 'Practice slow breathing', maxDaily: 'Seek help if worsens' }
+              ]
+            },
+            abdomen: {
+              pain: [
+                { name: 'Antacids (Tums, Rolaids)', dosage: '2-4 tablets as needed', notes: 'For stomach acid relief', maxDaily: 'Max 8 tablets/day' },
+                { name: 'Simethicone (Gas-X)', dosage: '125mg after meals', notes: 'Reduces gas and bloating', maxDaily: 'Up to 500mg/day' }
+              ],
+              nausea: [
+                { name: 'Bismuth subsalicylate (Pepto-Bismol)', dosage: '30ml every 30-60 min', notes: 'Settles stomach', maxDaily: 'Max 8 doses/day' },
+                { name: 'Ginger tea', dosage: '1 cup as needed', notes: 'Natural nausea relief', maxDaily: 'Unlimited' }
+              ],
+              bloating: [
+                { name: 'Simethicone (Gas-X)', dosage: '125mg after meals', notes: 'Breaks up gas bubbles', maxDaily: 'Up to 500mg/day' },
+                { name: 'Peppermint tea', dosage: '1 cup after meals', notes: 'Aids digestion', maxDaily: 'Up to 3 cups/day' }
+              ]
+            },
+            default: {
+              pain: [
+                { name: 'Ibuprofen (Advil)', dosage: '200-400mg every 4-6 hours', notes: 'Anti-inflammatory pain relief', maxDaily: 'Max 1200mg/day' },
+                { name: 'Acetaminophen (Tylenol)', dosage: '500mg every 4-6 hours', notes: 'General pain relief', maxDaily: 'Max 3000mg/day' }
+              ],
+              swelling: [
+                { name: 'Ice pack', dosage: '15-20 min every 2 hours', notes: 'Reduces swelling', maxDaily: 'As needed' },
+                { name: 'Elevation', dosage: 'Keep area raised', notes: 'Improves circulation', maxDaily: 'Throughout day' }
+              ],
+              stiffness: [
+                { name: 'Warm compress', dosage: '15-20 min as needed', notes: 'Relaxes muscles', maxDaily: 'As needed' },
+                { name: 'Gentle stretching', dosage: '5-10 min sessions', notes: 'Improves flexibility', maxDaily: '2-3 times daily' }
+              ]
+            }
+          };
+
+          const questions = [
+            { text: 'How long have you had these symptoms?', options: ['Just started', 'A few hours', 'A few days', 'A week or more'] },
+            { text: 'How would you describe the severity?', options: ['Mild', 'Moderate', 'Severe', 'Extreme'] },
+            { text: 'Are the symptoms getting better or worse?', options: ['Getting better', 'Staying the same', 'Getting worse', 'Come and go'] }
+          ];
+
+          const getRecommendation = () => {
+            const severity = answers[1] || '';
+            if (severity.includes('Extreme') || severity.includes('Severe')) return 'urgent';
+            if ((answers[0] || '').includes('week')) return 'doctor';
+            return 'wait';
+          };
+
+          const getRecommendedMedications = () => {
+            const recommendation = getRecommendation();
+            
+            // Only provide medication recommendations for non-emergency cases
+            if (recommendation === 'urgent') {
+              return [];
+            }
+
+            let recommendedMeds = [];
+            const regionMeds = medicationDatabase[selectedRegion] || medicationDatabase.default;
+
+            // Get medications for each selected symptom
+            selectedSymptoms.forEach(symptomId => {
+              if (regionMeds[symptomId]) {
+                recommendedMeds = [...recommendedMeds, ...regionMeds[symptomId]];
+              }
+            });
+
+            // If no specific medications found, use default pain relief
+            if (recommendedMeds.length === 0 && medicationDatabase.default.pain) {
+              recommendedMeds = medicationDatabase.default.pain;
+            }
+
+            // Remove duplicates based on medication name
+            const uniqueMeds = recommendedMeds.filter((med, index, self) =>
+              index === self.findIndex((m) => m.name === med.name)
+            );
+
+            return uniqueMeds;
+          };
+
+          const resetAssessment = () => {
+            setScreen('home'); 
+            setSelectedRegion(''); 
+            setSelectedSymptoms([]);
+            setAnswers({}); 
+            setCurrentQuestion(0); 
+            setBodyView('front');
+          };
+
+          useEffect(() => {
+            if (calling) {
+              const interval = setInterval(() => setCallDuration(prev => prev + 1), 1000);
+              return () => clearInterval(interval);
+            }
+          }, [calling]);
+
+          const formatTime = (seconds) => {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+          };
+
+          const styles = {
+            container: { minHeight: '100vh', background: '#f9fafb', padding: '24px', fontFamily: 'system-ui' },
+            card: { maxWidth: '600px', margin: '0 auto', background: 'white', borderRadius: '16px', padding: '32px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' },
+            title: { fontSize: '32px', fontWeight: 'bold', color: '#1f2937', marginBottom: '12px', textAlign: 'center' },
+            subtitle: { fontSize: '18px', color: '#6b7280', textAlign: 'center', marginBottom: '24px' },
+            button: { width: '100%', padding: '20px', borderRadius: '12px', border: 'none', cursor: 'pointer', fontSize: '20px', fontWeight: '600' },
+            primaryButton: { background: '#2563eb', color: 'white' },
+            disabledButton: { background: '#d1d5db', color: '#9ca3af', cursor: 'not-allowed' },
+            backButton: { background: 'none', border: 'none', color: '#2563eb', fontSize: '20px', cursor: 'pointer', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }
+          };
+
+          if (calling) {
+            return (
+              <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom, #dc2626, #b91c1c)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+                <div style={{ maxWidth: '500px', width: '100%' }}>
+                  <div style={{ background: 'white', borderRadius: '24px', padding: '48px', textAlign: 'center', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+                    <div style={{ marginBottom: '32px' }}>
+                      <div style={{ width: '128px', height: '128px', background: '#fee2e2', borderRadius: '50%', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontSize: '64px' }}>📞</span>
+                      </div>
+                      <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', marginBottom: '12px' }}>Calling</h2>
+                      <p style={{ fontSize: '24px', color: '#374151', fontWeight: '600', marginBottom: '8px' }}>St. Mary's Hospital</p>
+                      <p style={{ fontSize: '20px', color: '#6b7280' }}>Emergency Department</p>
+                    </div>
+                    <div style={{ background: '#f3f4f6', borderRadius: '12px', padding: '24px', marginBottom: '32px' }}>
+                      <p style={{ fontSize: '48px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>{formatTime(callDuration)}</p>
+                      <p style={{ fontSize: '18px', color: '#6b7280' }}>Call in progress...</p>
+                    </div>
+                    <div style={{ marginBottom: '24px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', color: '#374151', marginBottom: '12px' }}>
+                        <span style={{ fontSize: '24px' }}>📍</span>
+                        <span style={{ fontSize: '18px' }}>123 Medical Center Dr</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', color: '#374151', marginBottom: '12px' }}>
+                        <span style={{ fontSize: '24px' }}>📞</span>
+                        <span style={{ fontSize: '18px' }}>(555) 911-1234</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', color: '#374151' }}>
+                        <span style={{ fontSize: '24px' }}>🚑</span>
+                        <span style={{ fontSize: '18px' }}>1.2 miles away</span>
+                      </div>
+                    </div>
+                    <button onClick={() => { setCalling(false); setCallDuration(0); }} style={{ width: '100%', background: '#dc2626', color: 'white', fontSize: '24px', fontWeight: 'bold', padding: '20px', borderRadius: '12px', border: 'none', cursor: 'pointer', marginBottom: '12px' }}>End Call</button>
+                    <button onClick={() => { setCalling(false); setCallDuration(0); setScreen('home'); }} style={{ width: '100%', background: 'transparent', color: '#6b7280', fontSize: '18px', fontWeight: '600', padding: '12px', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (screen === 'home') {
+            return (
+              <div style={styles.container}>
+                <div style={styles.card}>
+                  <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                    <div style={{ fontSize: '64px', marginBottom: '16px' }}>❤️</div>
+                    <h1 style={styles.title}>Health Symptom Checker</h1>
+                    <p style={styles.subtitle}>Get simple guidance about your symptoms in three easy steps</p>
+                  </div>
+                  <button onClick={() => setScreen('body')} style={{...styles.button, ...styles.primaryButton, fontSize: '24px', marginBottom: '24px'}}>Check Your Symptoms</button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <button onClick={() => setScreen('history')} style={{ width: '100%', background: '#f3f4f6', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb', cursor: 'pointer', textAlign: 'left' }}>
+                      <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>📋 View History</h3>
+                      <p style={{ fontSize: '16px', color: '#6b7280', margin: 0 }}>See your past assessments</p>
+                    </button>
+                    <button onClick={() => setScreen('medications')} style={{ width: '100%', background: '#f3f4f6', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb', cursor: 'pointer', textAlign: 'left' }}>
+                      <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>💊 My Medications</h3>
+                      <p style={{ fontSize: '16px', color: '#6b7280', margin: 0 }}>View your medication list</p>
+                    </button>
+                  </div>
+                </div>
+                <button onClick={() => { setCalling(true); setCallDuration(0); }} style={{ position: 'fixed', top: '24px', right: '24px', background: '#dc2626', color: 'white', padding: '12px 24px', borderRadius: '12px', border: 'none', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                  <span>📞</span> Emergency
+                </button>
+              </div>
+            );
+          }
+
+          if (screen === 'body') {
+            return (
+              <div style={styles.container}>
+                <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+                  <button onClick={() => setScreen('home')} style={styles.backButton}><span>←</span> Back</button>
+                  <div style={styles.card}>
+                    <h2 style={styles.title}>Where do you feel symptoms?</h2>
+                    <p style={styles.subtitle}>Tap the body part that hurts</p>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '24px' }}>
+                      <button onClick={() => setBodyView('front')} style={{ padding: '12px 32px', borderRadius: '12px', fontSize: '18px', fontWeight: '600', border: 'none', cursor: 'pointer', background: bodyView === 'front' ? '#2563eb' : '#e5e7eb', color: bodyView === 'front' ? 'white' : '#374151' }}>Front</button>
+                      <button onClick={() => setBodyView('back')} style={{ padding: '12px 32px', borderRadius: '12px', fontSize: '18px', fontWeight: '600', border: 'none', cursor: 'pointer', background: bodyView === 'back' ? '#2563eb' : '#e5e7eb', color: bodyView === 'back' ? 'white' : '#374151' }}>Back</button>
+                    </div>
+                    <div style={{ background: '#f3f4f6', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {bodyRegions[bodyView].map((region) => (
+                          <button key={region.id} onClick={() => setSelectedRegion(region.id)} style={{ padding: '16px', borderRadius: '12px', fontSize: '18px', fontWeight: '600', border: '2px solid', borderColor: selectedRegion === region.id ? '#2563eb' : '#d1d5db', background: selectedRegion === region.id ? '#dbeafe' : 'white', cursor: 'pointer' }}>{region.name}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <p style={{ fontSize: '20px', fontWeight: '600', textAlign: 'center', marginBottom: '24px', color: '#1f2937' }}>
+                      {selectedRegion ? `You selected: ${bodyRegions[bodyView].find(r => r.id === selectedRegion)?.name}` : 'Please select a body part'}
+                    </p>
+                    <button onClick={() => selectedRegion && setScreen('symptoms')} disabled={!selectedRegion} style={{...styles.button, ...(selectedRegion ? styles.primaryButton : styles.disabledButton)}}>Continue</button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (screen === 'symptoms') {
+            const regionSymptoms = symptoms[selectedRegion] || symptoms.default;
+            return (
+              <div style={styles.container}>
+                <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+                  <button onClick={() => setScreen('body')} style={styles.backButton}><span>←</span> Back</button>
+                  <div style={styles.card}>
+                    <h2 style={styles.title}>What are you feeling?</h2>
+                    <p style={styles.subtitle}>Select all symptoms that apply</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
+                      {regionSymptoms.map((symptom) => (
+                        <button key={symptom.id} onClick={() => { if (selectedSymptoms.includes(symptom.id)) { setSelectedSymptoms(selectedSymptoms.filter(s => s !== symptom.id)); } else { setSelectedSymptoms([...selectedSymptoms, symptom.id]); } }} style={{ padding: '20px', borderRadius: '12px', border: '2px solid', borderColor: selectedSymptoms.includes(symptom.id) ? '#2563eb' : '#e5e7eb', background: selectedSymptoms.includes(symptom.id) ? '#dbeafe' : 'white', display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }}>
+                          <span style={{ fontSize: '32px' }}>{symptom.icon}</span>
+                          <span style={{ flex: 1, textAlign: 'left', fontSize: '18px', fontWeight: '600', color: '#1f2937' }}>{symptom.text}</span>
+                          {selectedSymptoms.includes(symptom.id) && <span style={{ fontSize: '24px', color: '#2563eb' }}>✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                    <button onClick={() => selectedSymptoms.length > 0 && setScreen('questions')} disabled={selectedSymptoms.length === 0} style={{...styles.button, ...(selectedSymptoms.length > 0 ? styles.primaryButton : styles.disabledButton)}}>Continue</button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (screen === 'questions') {
+            const question = questions[currentQuestion];
+            return (
+              <div style={styles.container}>
+                <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+                  <button onClick={() => currentQuestion > 0 ? setCurrentQuestion(currentQuestion - 1) : setScreen('symptoms')} style={styles.backButton}><span>←</span> Back</button>
+                  <div style={styles.card}>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '24px' }}>
+                      {questions.map((_, idx) => (<div key={idx} style={{ width: '12px', height: '12px', borderRadius: '50%', background: idx === currentQuestion ? '#2563eb' : '#d1d5db' }} />))}
+                    </div>
+                    <h2 style={{...styles.title, fontSize: '24px'}}>Question {currentQuestion + 1} of {questions.length}</h2>
+                    <p style={{ fontSize: '22px', fontWeight: '600', textAlign: 'center', marginBottom: '32px', color: '#1f2937' }}>{question.text}</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {question.options.map((option, idx) => (
+                        <button key={idx} onClick={() => { setAnswers({ ...answers, [currentQuestion]: option }); if (currentQuestion < questions.length - 1) { setCurrentQuestion(currentQuestion + 1); } else { setScreen('recommendation'); } }} style={{ padding: '20px', borderRadius: '12px', border: '2px solid #e5e7eb', background: 'white', fontSize: '18px', fontWeight: '600', cursor: 'pointer', textAlign: 'left' }}>{option}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (screen === 'recommendation') {
+            const recommendation = getRecommendation();
+            const recommendedMeds = getRecommendedMedications();
+            const content = {
+              wait: { icon: '✅', title: 'This Can Wait', color: '#10b981', message: 'Based on your symptoms, this does not require immediate medical attention. Try self-care and monitor symptoms.' },
+              doctor: { icon: '⚠️', title: 'See Your Doctor Soon', color: '#f59e0b', message: 'Your symptoms should be checked by your doctor within the next few days. Schedule an appointment.' },
+              urgent: { icon: '🚨', title: 'Seek Medical Care Now', color: '#ef4444', message: 'Your symptoms may require immediate medical attention. Please seek care right away.' }
+            };
+            const rec = content[recommendation];
+            
+            return (
+              <div style={styles.container}>
+                <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+                  <div style={styles.card}>
+                    <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                      <div style={{ fontSize: '80px', marginBottom: '16px' }}>{rec.icon}</div>
+                      <h2 style={{ fontSize: '36px', fontWeight: 'bold', color: rec.color, marginBottom: '16px' }}>{rec.title}</h2>
+                      <p style={{ fontSize: '20px', color: '#4b5563', lineHeight: '1.6' }}>{rec.message}</p>
+                    </div>
+                    
+                    {recommendation === 'urgent' && (
+                      <button onClick={() => { setCalling(true); setCallDuration(0); }} style={{...styles.button, background: '#ef4444', color: 'white', marginBottom: '16px', fontSize: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px'}}><span>📞</span> Call Emergency Services</button>
+                    )}
+                    
+                    {recommendation === 'doctor' && (
+                      <button onClick={() => { setCalling(true); setCallDuration(0); }} style={{...styles.button, ...styles.primaryButton, marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px'}}><span>📞</span> Call My Doctor</button>
+                    )}
+
+                    {/* Medication Recommendations Section - Only for non-emergency */}
+                    {recommendation !== 'urgent' && recommendedMeds.length > 0 && (
+                      <div style={{ background: '#f0f9ff', border: '2px solid #93c5fd', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                          <span style={{ fontSize: '32px' }}>💊</span>
+                          <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>Suggested Medications</h3>
+                        </div>
+                        <p style={{ fontSize: '16px', color: '#6b7280', marginBottom: '20px' }}>Based on your symptoms, these over-the-counter options may help:</p>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                          {recommendedMeds.map((med, index) => (
+                            <div key={index} style={{ background: 'white', border: '2px solid #bfdbfe', borderRadius: '12px', padding: '20px' }}>
+                              <h4 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>{med.name}</h4>
+                              <div style={{ fontSize: '16px', color: '#374151', lineHeight: '1.6' }}>
+                                <p style={{ margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Dosage:</span> {med.dosage}</p>
+                                <p style={{ margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Notes:</span> {med.notes}</p>
+                                <p style={{ margin: '4px 0', color: '#ef4444', fontWeight: '600' }}>{med.maxDaily}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div style={{ background: '#fef3c7', border: '2px solid #fcd34d', borderRadius: '8px', padding: '16px', marginTop: '20px' }}>
+                          <p style={{ fontSize: '14px', color: '#78350f', margin: 0, lineHeight: '1.5' }}>
+                            <strong>⚠️ Important:</strong> Always read medication labels carefully. Consult a pharmacist or doctor if you have questions, are taking other medications, or have existing health conditions.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <button onClick={resetAssessment} style={{...styles.button, background: '#2563eb', color: 'white', marginTop: '12px'}}>Start New Assessment</button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (screen === 'history') {
+            return (
+              <div style={styles.container}>
+                <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+                  <button onClick={() => setScreen('home')} style={styles.backButton}><span>←</span> Back</button>
+                  <div style={styles.card}>
+                    <h2 style={styles.title}>Assessment History</h2>
+                    <p style={styles.subtitle}>Your past symptom assessments</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+                      {assessmentHistory.map((assessment) => {
+                        const colors = { wait: { bg: '#d1fae5', border: '#6ee7b7', text: '#047857', badge: '#a7f3d0' }, doctor: { bg: '#fef3c7', border: '#fcd34d', text: '#b45309', badge: '#fde68a' }, urgent: { bg: '#fee2e2', border: '#fca5a5', text: '#b91c1c', badge: '#fecaca' } };
+                        const color = colors[assessment.recommendation];
+                        return (
+                          <div key={assessment.id} style={{ background: color.bg, border: `2px solid ${color.border}`, borderRadius: '12px', padding: '24px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
+                              <div>
+                                <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>{assessment.region}</h3>
+                                <p style={{ fontSize: '16px', color: '#6b7280', margin: 0 }}>{assessment.date} at {assessment.time}</p>
+                              </div>
+                              <span style={{ background: color.badge, color: color.text, padding: '8px 16px', borderRadius: '8px', fontSize: '14px', fontWeight: '600' }}>
+                                {assessment.recommendation === 'wait' ? 'Can Wait' : assessment.recommendation === 'doctor' ? 'See Doctor' : 'Urgent'}
+                              </span>
+                            </div>
+                            <p style={{ fontSize: '18px', color: '#374151', margin: 0 }}><span style={{ fontWeight: '600' }}>Symptoms:</span> {assessment.symptoms}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <button onClick={() => setScreen('home')} style={{...styles.button, ...styles.primaryButton}}>Back to Home</button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (screen === 'medications') {
+            return (
+              <div style={styles.container}>
+                <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+                  <button onClick={() => setScreen('home')} style={styles.backButton}><span>←</span> Back</button>
+                  <div style={styles.card}>
+                    <h2 style={styles.title}>My Medications</h2>
+                    <p style={styles.subtitle}>Your current medication list</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+                      {medications.map((med) => (
+                        <div key={med.id} style={{ background: '#dbeafe', border: '2px solid #93c5fd', borderRadius: '12px', padding: '24px', display: 'flex', gap: '16px' }}>
+                          <div style={{ fontSize: '40px' }}>💊</div>
+                          <div style={{ flex: 1 }}>
+                            <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', margin: '0 0 8px 0' }}>{med.name}</h3>
+                            <p style={{ fontSize: '16px', color: '#374151', margin: '0 0 4px 0' }}><span style={{ fontWeight: '600' }}>Frequency:</span> {med.frequency}</p>
+                            <p style={{ fontSize: '16px', color: '#374151', margin: 0 }}><span style={{ fontWeight: '600' }}>Best time:</span> {med.time}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <button onClick={() => setScreen('home')} style={{...styles.button, ...styles.primaryButton}}>Back to Home</button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          return null;
+        }
+
+        ReactDOM.render(<HealthSymptomChecker />, document.getElementById('root'));
+    </script>
+</body>
+</html>
